@@ -1,0 +1,172 @@
+<html>
+
+<script language="javascript"><!--
+var Collider;
+var Timer1,Timer2,Timer3,PosInt,OrInt;
+var Matrix;
+function initialize(){
+	Collider=Cortona.Engine.CreateFaceCollider();
+	Collider.Object=Cortona.Engine.Nodes("Caterpillar");
+	Collider.Geometry=Cortona.Engine.Nodes("Pared1");
+	Matrix=Cortona.Engine.CreateMatrix();
+	Timer1=Cortona.Engine.Nodes("Timer1");
+	Timer2=Cortona.Engine.Nodes("Timer2");
+	Timer3=Cortona.Engine.Nodes("Timer3");
+	PosInt=Cortona.Engine.Nodes("PosInt");
+	OrInt=Cortona.Engine.Nodes("OrInt");
+	PosInt.Fields("value_changed").Advise(posInt,'');
+	OrInt.Fields("value_changed").Advise(orInt,'');
+}
+function setObj(name){
+	Collider.Object=Cortona.Engine.Nodes(name);
+}
+function setGeom(name){
+	Collider.Geometry=Cortona.Engine.Nodes(name);
+}
+function move(dx,dz){
+	if(Timer2.Fields("isActive")==0){
+		Timer2.Fields("startTime")=Timer1.Fields("time")+.1;
+		PosInt.Fields("keyValue").Value(0)=Collider.Object.Fields("translation").Value;
+		PosInt.Fields("keyValue").X(1)=PosInt.Fields("keyValue").X(0)+dx;
+		PosInt.Fields("keyValue").Y(1)=PosInt.Fields("keyValue").Y(0);
+		PosInt.Fields("keyValue").Z(1)=PosInt.Fields("keyValue").Z(0)+dz;
+	}
+}
+function posInt(value,hint,timestamp){
+	vec=Cortona.Engine.CreateField("SFVec3f");
+	vec.x=value.x-Collider.Object.Fields("translation").x;
+	vec.z=value.z-Collider.Object.Fields("translation").z;
+	Collider.ObjectPosition=parentPos(Collider.Object.Name);
+	Collider.GeometryPosition=parentPos(Collider.Geometry.Name);
+	detect=Collider.DetectTranslation(vec.Variant);
+	DetectText.value=detect;
+	if(!detect){
+		Collider.Object.Fields("translation").Value=value.Value;
+	}else{
+		Timer2.Fields("stopTime")=timestamp;
+		showChain();
+	}
+}
+function rotate(angle){
+	if(Timer3.Fields("isActive")==0){
+		Timer3.Fields("startTime")=Timer1.Fields("time")+.1;
+		OrInt.Fields("keyValue").Value(0)=Collider.Object.Fields("rotation").Value;
+		OrInt.Fields("keyValue").Y(1)=1;
+		OrInt.Fields("keyValue").Angle(1)=OrInt.Fields("keyValue").Angle(0)*OrInt.Fields("keyValue").Y(0)+angle;
+	}
+}
+function orInt(value,hint,timestamp){
+	rot=Cortona.Engine.CreateField("SFRotation");
+	rot.y=1;
+	rot.angle=value.Angle*value.Y-Collider.Object.Fields("rotation").Angle*Collider.Object.Fields("rotation").Y;
+	Collider.ObjectPosition=parentPos(Collider.Object.Name);
+	Collider.GeometryPosition=parentPos(Collider.Geometry.Name);
+	detect=Collider.DetectRotation(rot.Variant);
+	DetectText.value=detect;
+	if(!detect){
+		Collider.Object.Fields("rotation").Value=value.Value;
+	}else{
+		Timer3.Fields("stopTime")=timestamp;
+		showChain();
+	}
+}
+function showChain(){
+	objArea.value='';
+	for(i=0;i<Collider.ObjectChain.Count;i++){
+		node=Collider.ObjectChain.Value(i);
+		objArea.value=objArea.value+node.TypeName;
+		if(node.Name.length)objArea.value=objArea.value+" "+node.Name;
+		if(i<Collider.ObjectChain.Count-1)objArea.value=objArea.value+"\n";
+	}
+	geomArea.value='';
+	for(i=0;i<Collider.GeometryChain.Count;i++){
+		node=Collider.GeometryChain.Value(i);
+		geomArea.value=geomArea.value+node.TypeName;
+		if(node.Name.length)geomArea.value=geomArea.value+" "+node.Name;
+		if(i<Collider.GeometryChain.Count-1)geomArea.value=geomArea.value+"\n";
+	}
+}
+function parentPos(name){
+	if(name=="Cabin"){
+		Matrix.Translation=Cortona.Engine.Nodes("Caterpillar").Fields("translation").Variant;
+		Matrix.Rotation=Cortona.Engine.Nodes("Caterpillar").Fields("rotation").Variant;
+		Matrix.SetTransform(Cortona.Engine.Nodes("Caterpillar"));
+	}else{
+		Matrix.Translation=Cortona.Engine.CreateField("SFVec3f").Variant;
+		Matrix.Rotation=Cortona.Engine.CreateField("SFRotation").Variant;
+	}
+	return(Matrix);
+}
+--></script>
+
+<body bgcolor=#c0c0c0 onLoad="initialize()">
+<table width="100%" height=100%>
+<tr>
+
+<td>
+
+<OBJECT ID="Cortona"
+CLASSID="CLSID:86A88967-7A20-11d2-8EDA-00600818EDB1"
+WIDTH=100% HEIGHT=100%>
+<PARAM NAME="Scene" value="laberinto2.wrl">
+</OBJECT>
+
+</td>
+
+<td width=135>
+<font face="Arial" size=-1>
+Objeto en<br>
+movimiento:<br>
+<table><tr><td><font size=-1>
+<input type="radio" name="ObjRadio" checked onClick="setObj('Caterpillar')">Esfera<br>
+<input type="radio" name="ObjRadio" readonly disabled="true" onClick="setObj('Pared1')">Paredes
+</font></td><td><font size=-1>
+
+</td></tr></table>
+
+Objeto estatico<br>
+Collider:<br>
+<table><tr><td><font size=-1>
+<input type="radio" name="GeomRadio" readonly disabled="true" onClick="setGeom('Caterpillar')">Esfera<br>
+<input type="radio" name="GeomRadio" checked onClick="setGeom('Pared1')">Paredes
+</font></td><td><font size=-1>
+</td></tr></table>
+
+<center><table>
+<tr>
+<td></td>
+<td><a href="javascript:move(0,-.5)"><img src="btn_up.gif" border=0></a></td>
+</tr>
+<tr>
+<td><a href="javascript:move(-.5,0)"><img src="btn_lt.gif" border=0></a></td>
+<td></td>
+<td><a href="javascript:move(.5,0)"><img src="btn_rt.gif" border=0></a></td>
+</tr>
+<tr>
+<td></td>
+<td><a href="javascript:move(0,.5)"><img src="btn_dn.gif" border=0></a></td>
+</tr>
+<tr>
+<td><a href="javascript:rotate(-.2)"><img src="btn_cw.gif" border=0></a></td>
+<td></td>
+<td><a href="javascript:rotate(.2)"><img src="btn_ccw.gif" border=0></a></td>
+</tr>
+</table></center>
+
+<!--input type="button" value="button" style="font-type:'Courier New Cyr'"-->
+
+Detectado... = <input name="DetectText" size="3" type="text" readonly>
+
+Cadena de objetos =
+<textarea name="objArea" rows=4 cols=23 readonly style="font-size:9"></textarea>
+
+Cadena de geometria =
+<textarea name="geomArea" rows=4 cols=23 readonly style="font-size:9"></textarea>
+
+</font>
+</td>
+
+</tr>
+</table>
+</body>
+</html>
